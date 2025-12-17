@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teknologi Informasi - Sistem Peminjaman Barang Prodi TI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- VARIABEL & STYLING DASAR --- */
+        :root {
+            --bg-color: #f0f2f5;
+            --surface-color: #ffffff;
+            --primary-color: #007bff;
+            --primary-dark: #0056b3;
+            --accent-color: #00d4ff;
+            --text-color: #1c1e21;
+            --text-secondary: #65676b;
+            --border-color: #dddfe2;
+            --shadow-light: rgba(0, 0, 0, 0.05);
+            --shadow-medium: rgba(0, 0, 0, 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-accent: linear-gradient(135deg, #00d4ff 0%, #007bff 100%);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f0f23;
+            --surface-color: #1a1b3a;
+            --primary-color: #4a7fff;
+            --primary-dark: #3366cc;
+            --accent-color: #00d4ff;
+            --text-color: #e4e6eb;
+            --text-secondary: #b0b3b8;
+            --border-color: #3a3b5a;
+            --shadow-light: rgba(0, 0, 0, 0.2);
+            --shadow-medium: rgba(0, 0, 0, 0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color); line-height: 1.6; transition: background-color 0.3s ease, color 0.3s ease; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+        /* --- TOAST NOTIFICATION --- */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            min-width: 300px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px var(--shadow-medium);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .toast.removing { opacity: 0; transform: translateX(100%); }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast.success { background-color: var(--success-color, #26de81); color: white; }
+        .toast.error { background-color: var(--danger-color, #ff4757); color: white; }
+        .toast.info { background-color: var(--info-color, #45aaf2); color: white; }
+        .toast i { font-size: 1.2rem; }
+
+        /* --- HEADER --- */
+        header { background-color: var(--surface-color); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 1000; }
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; }
+        .logo { font-size: 1.8rem; font-weight: 700; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { list-style: none; display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text-secondary); font-weight: 500; transition: color 0.3s; position: relative; }
+        .nav-links a::after { content: ''; position: absolute; width: 0; height: 2px; bottom: -5px; left: 0; background: var(--gradient-accent); transition: width 0.3s; }
+        .nav-links a:hover, .nav-links a.active { color: var(--accent-color); }
+        .nav-links a:hover::after, .nav-links a.active::after { width: 100%; }
+        .nav-actions { display: flex; align-items: center; gap: 15px; }
+        .user-info { color: var(--text-color); font-weight: 500; }
+        
+        /* --- THEME TOGGLE --- */
+        .theme-switch-wrapper { display: flex; align-items: center; }
+        .theme-switch { position: relative; display: inline-block; width: 60px; height: 28px; }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background: var(--gradient-accent); }
+        input:checked + .slider:before { transform: translateX(32px); }
+
+        .auth-buttons button { margin-left: 10px; padding: 10px 20px; border: none; border-radius: 50px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .btn-login { background-color: transparent; color: var(--primary-color); border: 2px solid var(--primary-color) !important; }
+        .btn-login:hover { background-color: var(--primary-color); color: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px var(--shadow-medium); }
+        .btn-primary { background: var(--gradient-accent); color: #fff; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4); }
+        
+        /* --- SECTIONS --- */
+        .section { padding: 60px 0; display: none; opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+        .section.active { display: block; opacity: 1; transform: translateY(0); }
+
+        /* --- HERO --- */
+        .hero { background: var(--gradient-primary), url('c:\Users\user\Downloads\frieren-magical-5120x2880-15165.jpeg') no-repeat center center/cover; color: #fff; text-align: center; padding: 120px 0; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); animation: shimmer 8s infinite; }
+        @keyframes shimmer { 0% { left: -100%; } 100% { left: 100%; } }
+        .hero h1 { font-size: 3.5rem; font-weight: 700; margin-bottom: 1.5rem; text-shadow: 2px 2px 8px rgba(0,0,0,0.3); }
+        .hero p { font-size: 1.3rem; max-width: 700px; margin: 0 auto 2.5rem; font-weight: 300; }
+        .hero .btn-primary { padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* --- FORMS --- */
+        .form-container { max-width: 500px; margin: 0 auto; background: var(--surface-color); padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px var(--shadow-medium); }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-secondary); }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 15px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 1rem;
+            background-color: var(--bg-color); color: var(--text-color); transition: all 0.3s ease;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .form-container button { width: 100%; padding: 15px; border: none; border-radius: 10px; background: var(--gradient-accent); color: #fff; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .form-container button:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0, 212, 255, 0.3); }
+
+        /* --- DASHBOARD --- */
+        .dashboard-layout { display: flex; gap: 30px; }
+        .sidebar { flex: 0 0 270px; background: var(--surface-color); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px var(--shadow-medium); height: fit-content; position: sticky; top: 100px; }
+        .sidebar ul { list-style: none; }
+        .sidebar li { margin-bottom: 5px; }
+        .sidebar a { display: flex; align-items: center; gap: 15px; padding: 15px; text-decoration: none; color: var(--text-secondary); border-radius: 10px; transition: all 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: var(--gradient-accent); color: #fff; transform: translateX(5px); }
+        .main-content { flex: 1; background: var(--surface-color); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px var(--shadow-medium); }
+
+        /* --- ITEM GRID --- */
+        .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; margin-top: 30px; }
+        .item-card { background: var(--surface-color); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px var(--shadow-medium); transition: all 0.3s; display: flex; flex-direction: column; }
+        .item-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px var(--shadow-medium); }
+        .item-card img { width: 100%; height: 200px; object-fit: cover; }
+        .item-card-body { padding: 25px; flex-grow: 1; display: flex; flex-direction: column; }
+        .item-card h3 { margin-bottom: 10px; font-size: 1.3rem; font-weight: 600; }
+        .item-card .category { display: inline-block; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; font-size: 0.9rem; }
+        .item-card .stock { margin-top: auto; padding-top: 15px; font-weight: 600; }
+        .stock.available { color: var(--accent-color); }
+        .stock.unavailable { color: #ff4757; }
+        .item-card .btn-primary { margin-top: 15px; padding: 12px; font-size: 1rem; }
+        
+        /* --- TABLES --- */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .data-table th { background-color: var(--bg-color); font-weight: 600; color: var(--text-secondary); }
+        .data-table tr:hover { background-color: var(--bg-color); }
+        .status-badge { padding: 6px 12px; border-radius: 50px; font-size: 0.85rem; font-weight: 600; color: #fff; }
+        .status-menunggu { background-color: #ffa502; }
+        .status-disetujui { background-color: #26de81; }
+        .status-ditolak { background-color: #ff4757; }
+        .status-selesai { background-color: #45aaf2; }
+
+        /* --- FOOTER --- */
+        footer { background-color: var(--surface-color); color: var(--text-secondary); text-align: center; padding: 30px 0; margin-top: 60px; border-top: 1px solid var(--border-color); }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .nav-links, .theme-switch-wrapper { display: none; }
+            .hero h1 { font-size: 2.5rem; }
+            .dashboard-layout { flex-direction: column; }
+            .sidebar { flex: none; width: 100%; position: static; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Header -->
+    <header>
+        <nav class="container">
+            <div class="logo">Teknologi Informasi</div>
+            <ul class="nav-links">
+                <li><a href="#" onclick="showSection('beranda')" class="nav-link active">Beranda</a></li>
+                <li><a href="#" onclick="showSection('inventaris')" class="nav-link">Inventaris</a></li>
+            </ul>
+            <div class="nav-actions">
+                <div class="theme-switch-wrapper">
+                    <label class="theme-switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="headerAuth" class="auth-buttons">
+                    
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Section: Beranda -->
+        <section id="beranda" class="section active">
+            <div class="hero">
+                <div class="container">
+                    <h1>Selamat Datang di Peminjaman TI</h1>
+                    <p>Sistem peminjaman inventaris modern untuk Prodi Teknologi Informasi. Cepat, mudah, dan transparan.</p>
+                    <button class="btn-primary" onclick="showSection('inventaris')">Jelajahi Inventaris</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Login -->
+        <section id="login" class="section">
+            <div class="form-container">
+                <h2 style="text-align: center; margin-bottom: 30px; font-weight: 700;">Masuk ke Akun Anda</h2>
+                <form id="loginForm">
+                    <div class="form-group"><label for="loginEmail">Email</label><input type="email" id="loginEmail" placeholder="nama@email.com" required></div>
+                    <div class="form-group"><label for="loginPassword">Password</label><input type="password" id="loginPassword" placeholder="Masukkan password" required></div>
+                    <button type="submit">Masuk</button>
+                </form>
+                <p style="text-align: center; margin-top: 20px; color: var(--text-secondary);">Belum punya akun? <a href="#" onclick="showSection('register')" style="color: var(--accent-color); font-weight: 600;">Daftar di sini</a></p>
+            </div>
+        </section>
+
+        <!-- Section: Register -->
+        <section id="register" class="section">
+            <div class="form-container">
+                <h2 style="text-align: center; margin-bottom: 30px; font-weight: 700;">Buat Akun Baru</h2>
+                <form id="registerForm">
+                    <div class="form-group"><label for="registerName">Nama Lengkap</label><input type="text" id="registerName" placeholder="John Doe" required></div>
+                    <div class="form-group"><label for="registerNimNip">NIM / NIP</label><input type="text" id="registerNimNip" placeholder="1234567890" required></div>
+                    <div class="form-group"><label for="registerEmail">Email</label><input type="email" id="registerEmail" placeholder="nama@email.com" required></div>
+                    <div class="form-group"><label for="registerPassword">Password</label><input type="password" id="registerPassword" placeholder="Minimal 8 karakter" required></div>
+                    <button type="submit">Daftar</button>
+                </form>
+                <p style="text-align: center; margin-top: 20px; color: var(--text-secondary);">Sudah punya akun? <a href="#" onclick="showSection('login')" style="color: var(--accent-color); font-weight: 600;">Masuk di sini</a></p>
+            </div>
+        </section>
+
+        <!-- Section: Inventaris (Public View) -->
+        <section id="inventaris" class="section">
+            <div class="container">
+                <h2 class="section-title" style="text-align: left; font-size: 2rem; font-weight: 700;">Inventaris Barang</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 20px;">
+                    <div style="position: relative; flex-grow: 1;"><i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i><input type="text" id="publicSearchInput" placeholder="Cari barang..." style="padding: 12px 15px 12px 45px; width: 100%; border: 1px solid var(--border-color); border-radius: 50px; background: var(--surface-color); color: var(--text-color);"></div>
+                    <select id="publicFilterCategory" style="padding: 12px 20px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--surface-color); color: var(--text-color); font-weight: 500;"><option>Semua Kategori</option><option>Laptop</option><option>Kamera</option><option>Proyektor</option><option>Router</option></select>
+                </div>
+                <div id="publicItemGrid" class="item-grid">
+                    <!-- Items will be dynamically inserted here -->
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section: Dashboard User -->
+        <section id="dashboardUser" class="section">
+            <div class="container">
+                <h1 style="margin-bottom: 30px; font-weight: 700;">Dashboard User</h1>
+                <div class="dashboard-layout">
+                    <aside class="sidebar">
+                        <h3 style="margin-bottom: 20px; font-weight: 600;">Menu</h3>
+                        <ul>
+                            <li><a href="#" onclick="showUserContent('items')"><i class="fas fa-box"></i> Daftar Barang</a></li>
+                            <li><a href="#" onclick="showUserContent('history')"><i class="fas fa-history"></i> Riwayat Saya</a></li>
+                            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar</a></li>
+                        </ul>
+                    </aside>
+                    <main class="main-content">
+                        <div id="userContentItems">
+                            <h2 style="font-weight: 600;">Daftar Inventaris</h2>
+                            <div id="userItemGrid" class="item-grid">
+                                <!-- Items will be dynamically inserted here -->
+                            </div>
+                        </div>
+                        <div id="userContentHistory" style="display:none;">
+                            <h2 style="font-weight: 600;">Riwayat Peminjaman Saya</h2>
+                            <table class="data-table">
+                                <thead><tr><th>ID</th><th>Barang</th><th>Waktu Pinjam</th><th>Waktu Kembali</th><th>Status</th></tr></thead>
+                                <tbody id="userHistoryTableBody">
+                                    <!-- History will be dynamically inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Dashboard Admin -->
+        <section id="dashboardAdmin" class="section">
+            <div class="container">
+                <h1 style="margin-bottom: 30px; font-weight: 700;">Dashboard Admin</h1>
+                <div class="dashboard-layout">
+                    <aside class="sidebar">
+                        <h3 style="margin-bottom: 20px; font-weight: 600;">Menu</h3>
+                        <ul>
+                            <li><a href="#" onclick="showAdminContent('loans')"><i class="fas fa-tasks"></i> Konfirmasi Peminjaman</a></li>
+                            <li><a href="#" onclick="showAdminContent('items')"><i class="fas fa-boxes"></i> Manajemen Barang</a></li>
+                            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar</a></li>
+                        </ul>
+                    </aside>
+                    <main class="main-content">
+                        <div id="adminContentLoans">
+                            <h2 style="font-weight: 600;">Konfirmasi Pengajuan Peminjaman</h2>
+                            <table class="data-table">
+                                <thead><tr><th>ID</th><th>Peminjam</th><th>Barang</th><th>Waktu Pinjam</th><th>Status</th><th>Aksi</th></tr></thead>
+                                <tbody id="adminLoanTableBody">
+                                    <!-- Loans will be dynamically inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="adminContentItems" style="display:none;">
+                             <h2 style="font-weight: 600;">Manajemen Barang</h2>
+                             <div id="adminItemGrid" class="item-grid">
+                                <!-- Items will be dynamically inserted here -->
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Form Peminjaman -->
+        <section id="loanFormSection" class="section">
+            <div class="container">
+                <div class="form-container">
+                    <h2 style="text-align: center; margin-bottom: 30px; font-weight: 700;">Formulir Peminjaman</h2>
+                    <form id="loanForm">
+                        <input type="hidden" id="loanItemId">
+                        <div class="form-group"><label>Nama Peminjam</label><input type="text" id="loanUserName" readonly></div>
+                        <div class="form-group"><label>NIM / NIP</label><input type="text" id="loanUserNim" readonly></div>
+                        <div class="form-group"><label>Barang yang Dipinjam</label><input type="text" id="loanItemName" readonly></div>
+                        <div class="form-group"><label for="loanDate">Waktu Pinjam</label><input type="datetime-local" id="loanDate" required></div>
+                        <div class="form-group"><label for="loanDuration">Durasi Peminjaman</label><select id="loanDuration" required><option value="">-- Pilih Durasi --</option><option value="1">1 Hari</option><option value="3">3 Hari</option><option value="7">1 Minggu</option></select></div>
+                        <div class="form-group"><label for="returnDate">Waktu Kembali (Diisi Otomatis)</label><input type="datetime-local" id="returnDate" readonly></div>
+                        <div class="form-group"><label for="loanPurpose">Keperluan Peminjaman</label><textarea id="loanPurpose" rows="4" placeholder="Jelaskan keperluan Anda..." required></textarea></div>
+                        <div style="display: flex; gap: 15px;"><button type="submit" class="btn-primary">Ajukan Peminjaman</button><button type="button" class="btn-login" onclick="showSection('dashboardUser')">Batal</button></div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Program Studi Teknologi Informasi. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- STATE MANAGEMENT (Simulasi Database) ---
+        const appState = {
+            currentUser: null,
+            users: [
+                { id: 1, name: 'Admin TI', email: 'admin@ti.com', password: 'admin123', nim_nip: 'ADMIN001', role: 'admin' },
+                { id: 2, name: 'Ahmad Budiman', email: 'ahmad@gmail.com', password: 'user123', nim_nip: '240705000', role: 'user' }
+            ],
+            items: [
+                { id: 101, name: 'Laptop ASUS ROG', category: 'Laptop', stock_total: 3, stock_available: 3, image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2071&auto=format&fit=crop' },
+                { id: 102, name: 'Kamera Sony A6400', category: 'Kamera', stock_total: 1, stock_available: 0, image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=2070&auto=format&fit=crop' },
+                { id: 103, name: 'Proyektor Epson EB-X41', category: 'Proyektor', stock_total: 5, stock_available: 5, image: 'https://kanaprorent.com/wp-content/uploads/2023/03/Proyektor-LCD.png' },
+                { id: 104, name: 'Router Mikrotik hAP ac2', category: 'Networking', stock_total: 6, stock_available: 6, image: 'https://i.mt.lv/cdn/rb_images/1220_hi_res.png' }
+            ],
+            loans: []
+        };
+        let nextLoanId = 1;
+
+        // --- HELPER FUNCTIONS ---
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+            toast.innerHTML = `<i class="fas fa-${icon}"></i><span>${message}</span>`;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function formatDateTime(dateTimeString) {
+            if (!dateTimeString) return '-';
+            const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateTimeString).toLocaleString('id-ID', options);
+        }
+
+        // --- DOM ELEMENT REFERENCES ---
+        const sections = document.querySelectorAll('.section');
+        const headerAuth = document.getElementById('headerAuth');
+        const publicItemGrid = document.getElementById('publicItemGrid');
+        const userItemGrid = document.getElementById('userItemGrid');
+        const adminItemGrid = document.getElementById('adminItemGrid');
+        const adminLoanTableBody = document.getElementById('adminLoanTableBody');
+        const userHistoryTableBody = document.getElementById('userHistoryTableBody');
+        const loanForm = document.getElementById('loanForm');
+        const loanDurationSelect = document.getElementById('loanDuration');
+
+        // --- CORE FUNCTIONS ---
+        function showSection(sectionId) {
+            sections.forEach(section => section.classList.remove('active'));
+            setTimeout(() => {
+                document.getElementById(sectionId)?.classList.add('active');
+            }, 100);
+            updateHeaderAuth();
+            if (sectionId === 'inventaris') renderItems(publicItemGrid);
+            if (sectionId === 'dashboardUser') renderItems(userItemGrid);
+            if (sectionId === 'dashboardAdmin') { renderItems(adminItemGrid); renderAdminLoans(); }
+        }
+
+        function updateHeaderAuth() {
+            if (appState.currentUser) {
+                headerAuth.innerHTML = `<span class="user-info">Welcome, ${appState.currentUser.name}</span><button class="btn-primary" onclick="logout()">Logout</button>`;
+            } else {
+                headerAuth.innerHTML = `<button class="btn-login" onclick="showSection('login')">Login</button><button class="btn-primary" onclick="showSection('register')">Daftar</button>`;
+            }
+        }
+
+        function renderItems(gridElement) {
+            gridElement.innerHTML = '';
+            appState.items.forEach(item => {
+                const isAvailable = item.stock_available > 0;
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}">
+                    <div class="item-card-body">
+                        <h3>${item.name}</h3>
+                        <span class="category">${item.category}</span>
+                        <p class="stock ${isAvailable ? 'available' : 'unavailable'}"><i class="fas fa-${isAvailable ? 'check' : 'times'}-circle"></i> ${isAvailable ? `Tersedia: ${item.stock_available} unit` : 'Stok Habis'}</p>
+                        <button class="btn-primary" ${!isAvailable || !appState.currentUser ? 'disabled' : ''} onclick="openLoanForm(${item.id})">
+                            ${!appState.currentUser ? 'Login Dulu' : isAvailable ? 'Ajukan Peminjaman' : 'Stok Habis'}
+                        </button>
+                    </div>
+                `;
+                gridElement.appendChild(card);
+            });
+        }
+        
+        function openLoanForm(itemId) {
+            if (!appState.currentUser) { showToast('Silakan login terlebih dahulu.', 'error'); showSection('login'); return; }
+            const item = appState.items.find(i => i.id === itemId);
+            if (!item || item.stock_available === 0) { showToast('Barang tidak tersedia.', 'error'); return; }
+
+            document.getElementById('loanItemId').value = item.id;
+            document.getElementById('loanUserName').value = appState.currentUser.name;
+            document.getElementById('loanUserNim').value = appState.currentUser.nim_nip;
+            document.getElementById('loanItemName').value = item.name;
+            
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Adjust for timezone
+            document.getElementById('loanDate').value = now.toISOString().slice(0, 16);
+            
+            document.getElementById('loanDuration').value = '';
+            document.getElementById('returnDate').value = '';
+            document.getElementById('loanPurpose').value = '';
+            
+            showSection('loanFormSection');
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const user = appState.users.find(u => u.email === email && u.password === password);
+            if (user) {
+                appState.currentUser = user;
+                showToast(`Login berhasil sebagai ${user.role}!`, 'success');
+                showSection(user.role === 'admin' ? 'dashboardAdmin' : 'dashboardUser');
+            } else {
+                showToast('Email atau password salah.', 'error');
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newUser = {
+                id: appState.users.length + 1,
+                name: document.getElementById('registerName').value,
+                email: document.getElementById('registerEmail').value,
+                password: document.getElementById('registerPassword').value,
+                nim_nip: document.getElementById('registerNimNip').value,
+                role: 'user'
+            };
+            appState.users.push(newUser);
+            showToast('Pendaftaran berhasil! Silakan login.', 'success');
+            showSection('login');
+        });
+
+        loanDurationSelect.addEventListener('change', (e) => {
+            const duration = parseInt(e.target.value);
+            if (duration) {
+                const loanDate = new Date(document.getElementById('loanDate').value);
+                const returnDate = new Date(loanDate);
+                returnDate.setDate(returnDate.getDate() + duration);
+                returnDate.setMinutes(returnDate.getMinutes() - returnDate.getTimezoneOffset());
+                document.getElementById('returnDate').value = returnDate.toISOString().slice(0, 16);
+            } else {
+                document.getElementById('returnDate').value = '';
+            }
+        });
+
+        loanForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemId = parseInt(document.getElementById('loanItemId').value);
+            const item = appState.items.find(i => i.id === itemId);
+
+            const newLoan = {
+                id: nextLoanId++,
+                user_id: appState.currentUser.id,
+                user_name: appState.currentUser.name,
+                item_id: itemId,
+                item_name: item.name,
+                loan_date: document.getElementById('loanDate').value,
+                return_date: document.getElementById('returnDate').value,
+                purpose: document.getElementById('loanPurpose').value,
+                status: 'menunggu'
+            };
+            appState.loans.push(newLoan);
+            showToast('Pengajuan peminjaman berhasil dikirim! Menunggu konfirmasi admin.', 'success');
+            showSection('dashboardUser');
+        });
+
+        // --- ADMIN & USER SPECIFIC FUNCTIONS ---
+        function renderAdminLoans() {
+            adminLoanTableBody.innerHTML = '';
+            appState.loans.forEach(loan => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${loan.id}</td>
+                    <td>${loan.user_name}</td>
+                    <td>${loan.item_name}</td>
+                    <td>${formatDateTime(loan.loan_date)}</td>
+                    <td><span class="status-badge status-${loan.status}">${loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}</span></td>
+                    <td>
+                        ${loan.status === 'menunggu' ? `
+                            <button class="btn-success" style="padding: 8px 12px; margin-right: 5px; border-radius: 8px; border: none;" onclick="approveLoan(${loan.id})"><i class="fas fa-check"></i></button>
+                            <button class="btn-danger" style="padding: 8px 12px; border-radius: 8px; border: none;" onclick="rejectLoan(${loan.id})"><i class="fas fa-times"></i></button>
+                        ` : '-'}
+                    </td>
+                `;
+                adminLoanTableBody.appendChild(row);
+            });
+        }
+        
+        function approveLoan(loanId) {
+            const loan = appState.loans.find(l => l.id === loanId);
+            const item = appState.items.find(i => i.id === loan.item_id);
+            if (item.stock_available > 0) {
+                loan.status = 'disetujui';
+                item.stock_available--;
+                showToast(`Peminjaman untuk ${loan.item_name} disetujui!`, 'success');
+                renderAdminLoans();
+                renderItems(adminItemGrid);
+            } else {
+                showToast('Stok tidak mencukupi untuk menyetujui peminjaman ini.', 'error');
+            }
+        }
+
+        function rejectLoan(loanId) {
+            const loan = appState.loans.find(l => l.id === loanId);
+            loan.status = 'ditolak';
+            showToast(`Peminjaman untuk ${loan.item_name} ditolak.`, 'error');
+            renderAdminLoans();
+        }
+        
+        function showUserContent(content) {
+            const itemsDiv = document.getElementById('userContentItems');
+            const historyDiv = document.getElementById('userContentHistory');
+            if (content === 'items') {
+                itemsDiv.style.display = 'block';
+                historyDiv.style.display = 'none';
+                renderItems(userItemGrid);
+            } else {
+                itemsDiv.style.display = 'none';
+                historyDiv.style.display = 'block';
+                renderUserHistory();
+            }
+        }
+        
+        function renderUserHistory() {
+            userHistoryTableBody.innerHTML = '';
+            const userLoans = appState.loans.filter(l => l.user_id === appState.currentUser.id);
+            if(userLoans.length === 0) {
+                userHistoryTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada riwayat peminjaman.</td></tr>';
+                return;
+            }
+            userLoans.forEach(loan => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${loan.id}</td>
+                    <td>${loan.item_name}</td>
+                    <td>${formatDateTime(loan.loan_date)}</td>
+                    <td>${formatDateTime(loan.return_date)}</td>
+                    <td><span class="status-badge status-${loan.status}">${loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}</span></td>
+                `;
+                userHistoryTableBody.appendChild(row);
+            });
+        }
+        
+        function showAdminContent(content) {
+            const loansDiv = document.getElementById('adminContentLoans');
+            const itemsDiv = document.getElementById('adminContentItems');
+            if (content === 'loans') {
+                loansDiv.style.display = 'block';
+                itemsDiv.style.display = 'none';
+                renderAdminLoans();
+            } else {
+                loansDiv.style.display = 'none';
+                itemsDiv.style.display = 'block';
+                renderItems(adminItemGrid);
+            }
+        }
+
+        function logout() {
+            appState.currentUser = null;
+            showToast('Anda telah keluar dari sistem.', 'info');
+            showSection('beranda');
+        }
+        
+        // --- INITIALIZATION & THEME TOGGLE ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateHeaderAuth();
+            renderItems(publicItemGrid);
+
+            const toggleSwitch = document.querySelector('#theme-toggle');
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme) {
+                document.documentElement.setAttribute('data-theme', currentTheme);
+                if (currentTheme === 'dark') toggleSwitch.checked = true;
+            }
+            toggleSwitch.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
